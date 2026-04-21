@@ -1,0 +1,17 @@
+node_modules/
+.env
+*.log
+logs/
+build/
+dist/
+__pycache__/
+*.pyc
+.DS_Store
+coverage/
+.nyc_output/
+*.pem
+*.key
+*.cert
+mongo_data/
+trivy-report.json
+sonar-project.properties
