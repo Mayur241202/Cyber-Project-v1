@@ -20,7 +20,10 @@ const Navbar = () => {
         {user && <>
           <Link to="/dashboard" style={isActive('/dashboard') ? styles.activeLink : styles.link}>Dashboard</Link>
           <Link to="/books" style={isActive('/books') ? styles.activeLink : styles.link}>Books</Link>
-          <Link to="/my-issues" style={isActive('/my-issues') ? styles.activeLink : styles.link}>My Issues</Link>
+          {/* My Issues — only for regular users, NOT for admin/librarian */}
+          {!['librarian', 'admin'].includes(user.role) && (
+            <Link to="/my-issues" style={isActive('/my-issues') ? styles.activeLink : styles.link}>My Issues</Link>
+          )}
 
           {/* Librarian link — visible to librarian AND admin */}
           {['librarian', 'admin'].includes(user.role) && (

@@ -152,8 +152,8 @@ const Books = () => {
                 <p style={styles.isbn}>ISBN: {book.isbn}</p>
                 {book.description && <p style={styles.desc}>{book.description.substring(0, 80)}...</p>}
 
-                {/* Borrow button — available to ALL logged-in users */}
-                {user && book.availableCopies > 0 && (
+                {/* Borrow button — only for regular users, NOT for admin/librarian */}
+                {user && !['librarian', 'admin'].includes(user.role) && book.availableCopies > 0 && (
                   alreadyRequested ? (
                     <div style={styles.requestedBadge}>⏳ Request Pending</div>
                   ) : (
