@@ -19,7 +19,12 @@ const AdminPanel = () => {
     setLoading(true);
     try {
       const { data } = await api.get('/admin/anomalies');
-      setAnomalies(data.anomalies || []);
+      const anomalyList = Array.isArray(data.anomalies) 
+        ? data.anomalies 
+        : Array.isArray(data) 
+          ? data 
+          : [];
+      setAnomalies(anomalyList);
     } catch { setAnomalies([]); }
     finally { setLoading(false); }
   };

@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Books from './pages/Books';
 import MyIssues from './pages/MyIssues';
 import AdminPanel from './pages/AdminPanel';
+import LibrarianPanel from './pages/LibrarianPanel';
 import VulnDemo from './pages/VulnDemo';
 import Navbar from './components/Navbar';
 
@@ -29,6 +30,7 @@ const AppRoutes = () => (
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/books" element={<ProtectedRoute><Books /></ProtectedRoute>} />
       <Route path="/my-issues" element={<ProtectedRoute><MyIssues /></ProtectedRoute>} />
+      <Route path="/librarian" element={<ProtectedRoute roles={['librarian', 'admin']}><LibrarianPanel /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminPanel /></ProtectedRoute>} />
       <Route path="/vuln-demo" element={<VulnDemo />} />
     </Routes>

@@ -25,7 +25,7 @@ const createLimiter = (options) => rateLimit({
 exports.loginLimiter = createLimiter({
   name: 'login',
   windowMs: 15 * 60 * 1000,  // 15 minutes
-  max: 10,                     // 10 attempts per window
+  max: 100,                     // 10 attempts per window
   skipSuccessfulRequests: true, // Don't count successful logins
   message: { error: 'Too many login attempts. Please wait 15 minutes.' },
 });

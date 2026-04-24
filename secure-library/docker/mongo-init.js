@@ -25,7 +25,7 @@ db.createCollection('users', {
 db.createCollection('books');
 db.createCollection('issues');
 
-// Seed admin user (password: Admin@1234 — change this!)
+// Seed admin user (password: Admin@1234)
 db.users.insertOne({
   name: 'System Admin',
   email: 'admin@library.com',
@@ -39,4 +39,31 @@ db.users.insertOne({
   updatedAt: new Date(),
 });
 
-print('✅ MongoDB initialized for secure_library');
+// Seed librarian user (password: Librarian@1234)
+db.users.insertOne({
+  name: 'Head Librarian',
+  email: 'librarian@library.com',
+  // bcrypt hash of 'Librarian@1234' with 12 rounds
+  password: '$2b$12$K8GpnPAqLBhGlCBFKmJyp.hfxLMBqPvh9zRkHnqp1MnOJlZXmW8eK',
+  role: 'librarian',
+  isActive: true,
+  isLocked: false,
+  failedLoginAttempts: 0,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
+// Seed a sample book so the catalog is not empty
+db.books.insertOne({
+  title: 'Clean Code',
+  author: 'Robert C. Martin',
+  isbn: '9780132350884',
+  category: 'Technology',
+  description: 'Software craftsmanship book on writing clean, maintainable code.',
+  totalCopies: 2,
+  availableCopies: 2,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
+print('✅ MongoDB initialized: admin, librarian, and sample book seeded.');

@@ -21,13 +21,29 @@ const Navbar = () => {
           <Link to="/dashboard" style={isActive('/dashboard') ? styles.activeLink : styles.link}>Dashboard</Link>
           <Link to="/books" style={isActive('/books') ? styles.activeLink : styles.link}>Books</Link>
           <Link to="/my-issues" style={isActive('/my-issues') ? styles.activeLink : styles.link}>My Issues</Link>
+
+          {/* Librarian link — visible to librarian AND admin */}
+          {['librarian', 'admin'].includes(user.role) && (
+            <Link to="/librarian" style={{...(isActive('/librarian') ? styles.activeLink : styles.link), color: isActive('/librarian') ? 'white' : '#9ae6b4'}}>
+              📋 Requests
+            </Link>
+          )}
+
+          {/* Admin-only link */}
           {user.role === 'admin' && (
             <Link to="/admin" style={isActive('/admin') ? styles.activeLink : styles.link}>Admin</Link>
           )}
+
           <Link to="/vuln-demo" style={{...styles.link, color:'#f6ad55'}}>⚠️ Demo</Link>
+
           <div style={styles.user}>
             <span style={styles.userName}>{user.name}</span>
-            <span style={styles.roleBadge}>{user.role}</span>
+            <span style={{
+              ...styles.roleBadge,
+              background: user.role === 'admin' ? '#553c9a' : user.role === 'librarian' ? '#276749' : '#2d3748',
+            }}>
+              {user.role}
+            </span>
             <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
           </div>
         </>}
@@ -48,7 +64,7 @@ const styles = {
   activeLink: { color:'white', textDecoration:'none', fontSize:'14px', fontWeight:'bold' },
   user: { display:'flex', alignItems:'center', gap:'0.75rem', marginLeft:'1rem', paddingLeft:'1rem', borderLeft:'1px solid #4a5568' },
   userName: { fontSize:'14px', color:'#e2e8f0' },
-  roleBadge: { background:'#2d3748', padding:'2px 8px', borderRadius:'12px', fontSize:'11px', color:'#90cdf4' },
+  roleBadge: { padding:'2px 8px', borderRadius:'12px', fontSize:'11px', color:'#fff' },
   logoutBtn: { padding:'0.3rem 0.75rem', background:'#e53e3e', color:'white', border:'none', borderRadius:'6px', cursor:'pointer', fontSize:'12px' },
 };
 

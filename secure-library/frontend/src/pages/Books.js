@@ -12,6 +12,15 @@ const Books = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title:'', author:'', isbn:'', category:'Technology', totalCopies:1, description:'' });
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
+  // Track which books the user has already requested (pending/approved)
+  const [myActiveBookIds, setMyActiveBookIds] = useState(new Set());
+
+  const showMsg = (text, type = 'success') => {
+    setMessage(text);
+    setMessageType(type);
+    setTimeout(() => setMessage(''), 5000);
+  };
 
   const fetchBooks = async () => {
     setLoading(true);
@@ -25,42 +34,75 @@ const Books = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchBooks(); }, []);
+  // Load user's active requests so we can disable the Borrow button for those books
+  const fetchMyActive = async () => {
+    try {
+      const { data } = await api.get('/issues/my');
+      const activeIds = new Set(
+        (data.issues || [])
+          .filter(i => ['pending', 'approved'].includes(i.status))
+          .map(i => i.book?._id || i.book)
+      );
+      setMyActiveBookIds(activeIds);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchBooks();
+    if (user) fetchMyActive();
+  }, []);
 
   const handleAddBook = async (e) => {
     e.preventDefault();
     try {
       await api.post('/books', form);
-      setMessage('✅ Book added!');
+      showMsg('✅ Book added successfully!', 'success');
       setShowForm(false);
+      setForm({ title:'', author:'', isbn:'', category:'Technology', totalCopies:1, description:'' });
       fetchBooks();
     } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.error || 'Failed'));
+      const errMsg = err.response?.data?.errors
+        ? err.response.data.errors.map(e => e.msg).join(', ')
+        : err.response?.data?.error || 'Failed to add book';
+      showMsg('❌ ' + errMsg, 'error');
     }
   };
 
-  const handleIssue = async (bookId) => {
+  // User sends a borrow REQUEST — librarian will approve/reject
+  const handleBorrowRequest = async (bookId) => {
     try {
-      await api.post('/issues', { bookId, userId: user.id });
-      setMessage('✅ Book issued to you!');
-      fetchBooks();
+      await api.post('/issues', { bookId });
+      showMsg('📋 Borrow request sent! A librarian will review it shortly. Check "My Issues" for status.', 'success');
+      setMyActiveBookIds(prev => new Set([...prev, bookId]));
     } catch (err) {
-      setMessage('❌ ' + (err.response?.data?.error || 'Failed'));
+      showMsg('❌ ' + (err.response?.data?.error || 'Failed to send request'), 'error');
     }
   };
 
   const categories = ['', 'Fiction', 'Non-Fiction', 'Science', 'Technology', 'History', 'Biography', 'Reference', 'Other'];
+  const canManage = ['librarian', 'admin'].includes(user?.role);
 
   return (
     <div style={styles.page}>
       <div style={styles.header}>
         <h1>📚 Book Catalog</h1>
-        {['librarian','admin'].includes(user?.role) && (
-          <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>+ Add Book</button>
+        {canManage && (
+          <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>
+            {showForm ? '✕ Cancel' : '+ Add Book'}
+          </button>
         )}
       </div>
 
-      {message && <div style={styles.msg}>{message}</div>}
+      {message && (
+        <div style={{
+          ...styles.msg,
+          background: messageType === 'success' ? '#f0fff4' : '#fff5f5',
+          color: messageType === 'success' ? '#276749' : '#c53030',
+          border: `1px solid ${messageType === 'success' ? '#9ae6b4' : '#feb2b2'}`,
+        }}>
+          {message}
+        </div>
+      )}
 
       <div style={styles.filters}>
         <input style={styles.searchInput} placeholder="Search title, author, ISBN..."
@@ -72,7 +114,7 @@ const Books = () => {
         <button style={styles.btnSearch} onClick={fetchBooks}>Search</button>
       </div>
 
-      {showForm && (
+      {showForm && canManage && (
         <div style={styles.formCard}>
           <h3>Add New Book</h3>
           <form onSubmit={handleAddBook} style={styles.form}>
@@ -94,26 +136,38 @@ const Books = () => {
 
       {loading ? <p>Loading books...</p> : (
         <div style={styles.grid}>
-          {books.map(book => (
-            <div key={book._id} style={styles.card}>
-              <div style={styles.cardHeader}>
-                <span style={styles.category}>{book.category}</span>
-                <span style={{...styles.badge, background: book.availableCopies > 0 ? '#c6f6d5' : '#fed7d7',
-                  color: book.availableCopies > 0 ? '#276749' : '#c53030'}}>
-                  {book.availableCopies > 0 ? `${book.availableCopies} available` : 'Not available'}
-                </span>
+          {books.map(book => {
+            const alreadyRequested = myActiveBookIds.has(book._id);
+            return (
+              <div key={book._id} style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.category}>{book.category}</span>
+                  <span style={{...styles.badge, background: book.availableCopies > 0 ? '#c6f6d5' : '#fed7d7',
+                    color: book.availableCopies > 0 ? '#276749' : '#c53030'}}>
+                    {book.availableCopies > 0 ? `${book.availableCopies} available` : 'Not available'}
+                  </span>
+                </div>
+                <h3 style={styles.bookTitle}>{book.title}</h3>
+                <p style={styles.author}>by {book.author}</p>
+                <p style={styles.isbn}>ISBN: {book.isbn}</p>
+                {book.description && <p style={styles.desc}>{book.description.substring(0, 80)}...</p>}
+
+                {/* Borrow button — available to ALL logged-in users */}
+                {user && book.availableCopies > 0 && (
+                  alreadyRequested ? (
+                    <div style={styles.requestedBadge}>⏳ Request Pending</div>
+                  ) : (
+                    <button style={styles.btnIssue} onClick={() => handleBorrowRequest(book._id)}>
+                      📋 Request to Borrow
+                    </button>
+                  )
+                )}
+                {user && book.availableCopies < 1 && (
+                  <div style={styles.unavailableBadge}>📵 Not Available</div>
+                )}
               </div>
-              <h3 style={styles.bookTitle}>{book.title}</h3>
-              <p style={styles.author}>by {book.author}</p>
-              <p style={styles.isbn}>ISBN: {book.isbn}</p>
-              {book.description && <p style={styles.desc}>{book.description.substring(0, 80)}...</p>}
-              {book.availableCopies > 0 && user?.role === 'user' && (
-                <button style={styles.btnIssue} onClick={() => handleIssue(book._id)}>
-                  📖 Borrow
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -128,7 +182,7 @@ const styles = {
   select: { padding:'0.6rem', border:'1px solid #e2e8f0', borderRadius:'8px', fontSize:'14px' },
   btnSearch: { padding:'0.6rem 1.5rem', background:'#3182ce', color:'white', border:'none', borderRadius:'8px', cursor:'pointer' },
   btnAdd: { padding:'0.6rem 1.5rem', background:'#276749', color:'white', border:'none', borderRadius:'8px', cursor:'pointer' },
-  msg: { padding:'0.75rem', background:'#ebf8ff', borderRadius:'8px', marginBottom:'1rem' },
+  msg: { padding:'0.75rem', borderRadius:'8px', marginBottom:'1rem', fontSize:'14px' },
   formCard: { background:'white', padding:'1.5rem', borderRadius:'12px', boxShadow:'0 2px 10px rgba(0,0,0,0.08)', marginBottom:'1.5rem' },
   form: { display:'flex', flexDirection:'column', gap:'0.5rem' },
   input: { padding:'0.6rem', border:'1px solid #e2e8f0', borderRadius:'6px', fontSize:'14px' },
@@ -141,7 +195,9 @@ const styles = {
   author: { color:'#718096', fontSize:'14px', margin:'0 0 0.25rem' },
   isbn: { color:'#a0aec0', fontSize:'12px', margin:'0 0 0.5rem' },
   desc: { color:'#4a5568', fontSize:'13px' },
-  btnIssue: { width:'100%', padding:'0.5rem', background:'#3182ce', color:'white', border:'none', borderRadius:'6px', cursor:'pointer', marginTop:'0.75rem' },
+  btnIssue: { width:'100%', padding:'0.5rem', background:'#3182ce', color:'white', border:'none', borderRadius:'6px', cursor:'pointer', marginTop:'0.75rem', fontSize:'14px' },
+  requestedBadge: { width:'100%', padding:'0.5rem', background:'#fefcbf', color:'#744210', borderRadius:'6px', marginTop:'0.75rem', fontSize:'14px', textAlign:'center', border:'1px solid #f6e05e' },
+  unavailableBadge: { width:'100%', padding:'0.5rem', background:'#fff5f5', color:'#c53030', borderRadius:'6px', marginTop:'0.75rem', fontSize:'14px', textAlign:'center' },
 };
 
 export default Books;

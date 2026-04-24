@@ -14,48 +14,31 @@ const issueSchema = new mongoose.Schema({
   },
   issuedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Librarian who issued
+    ref: 'User',
   },
-  issueDate: {
-    type: Date,
-    default: Date.now,
-  },
-  dueDate: {
-    type: Date,
-    required: true,
-    default: () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
-  },
-  returnDate: {
-    type: Date,
-  },
+  issueDate: { type: Date },
+  dueDate:   { type: Date },
+  returnDate:{ type: Date },
   status: {
     type: String,
-    enum: ['issued', 'returned', 'overdue', 'lost'],
-    default: 'issued',
+    // 'issued' kept for backward compatibility with old records in DB
+    enum: ['pending', 'approved', 'issued', 'rejected', 'returned', 'overdue', 'lost'],
+    default: 'pending',
   },
-  fine: {
-    type: Number,
-    default: 0,
-    min: 0,
-  },
-  notes: {
-    type: String,
-    maxlength: 500,
-    trim: true,
-  },
+  rejectionReason: { type: String, maxlength: 300, trim: true },
+  fine:  { type: Number, default: 0, min: 0 },
+  notes: { type: String, maxlength: 500, trim: true },
 }, { timestamps: true });
 
-// Auto-calculate fine on return
 issueSchema.methods.calculateFine = function () {
-  const FINE_PER_DAY = 2; // ₹2 per day
-  if (this.returnDate && this.returnDate > this.dueDate) {
+  const FINE_PER_DAY = 2;
+  if (this.returnDate && this.dueDate && this.returnDate > this.dueDate) {
     const daysLate = Math.ceil((this.returnDate - this.dueDate) / (1000 * 60 * 60 * 24));
     this.fine = daysLate * FINE_PER_DAY;
   }
   return this.fine;
 };
 
-// Index for quick lookups
 issueSchema.index({ user: 1, status: 1 });
 issueSchema.index({ book: 1, status: 1 });
 
